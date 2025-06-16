@@ -9,7 +9,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+  "onView:codeShareView"
+  ],
   "main": "./out/extension.js",
   "contributes": {
   "viewsContainers": {
@@ -22,13 +24,16 @@
     ]
   },
   "views": {
-    "codeShareContainer": [
-      {
-        "id": "codeShareView",
-        "name": "Code Share Panel"
-      }
-    ]
-  },
+  "codeShareContainer": [
+    {
+      "type": "webview",
+      "icon": "media/icon2.svg", 
+      "id": "codeShareView",
+      "name": "Code Share Panel"
+    }
+  ]
+},
+
   "commands": [
     {
       "command": "codeShare.sendCode",
