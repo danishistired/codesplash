@@ -1,4 +1,11 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import AdmZip from 'adm-zip';
+import axios from 'axios';
+import FormData from 'form-data';
+
 
 export function activate(context: vscode.ExtensionContext) {
   const provider = new CodeShareViewProvider(context.extensionUri);
@@ -12,7 +19,45 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('codeShare.sendCode', async () => {
-      vscode.window.showInformationMessage('Send Code button clicked!');
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders || workspaceFolders.length === 0) {
+        vscode.window.showErrorMessage('No folder is open.');
+        return;
+      }
+
+      const folderPath = workspaceFolders[0].uri.fsPath;
+
+      try {
+        vscode.window.showInformationMessage('Zipping project...');
+        const zipPath = path.join(os.tmpdir(), 'code-share-upload.zip');
+        const zip = new AdmZip();
+        zip.addLocalFolder(folderPath);
+        zip.writeZip(zipPath);
+        console.log('Zipped to:', zipPath);
+        console.log('Exists:', fs.existsSync(zipPath));
+
+
+        vscode.window.showInformationMessage('Uploading to File.io...');
+
+        if (!fs.existsSync(zipPath)) {
+          vscode.window.showErrorMessage('Failed to create zip file. Please try again.');
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(zipPath));
+
+        const response = await axios.post('https://file.io', formData, {
+          headers: formData.getHeaders()
+        });
+
+        const link = response.data.link;
+        await vscode.env.clipboard.writeText(link);
+        vscode.window.showInformationMessage('Link copied to clipboard: ' + link);
+      } catch (err: any) {
+        vscode.window.showErrorMessage('Failed to send code: ' + err.message);
+        console.error(err);
+      }
     })
   );
 
