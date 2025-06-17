@@ -7,7 +7,6 @@ import axios from 'axios';
 import FormData from 'form-data';
 
 const GOFILE_API = 'https://upload.gofile.io/uploadFile';
-// 🔐 Optional: add your GoFile token (or prompt for it securely)
 const GOFILE_TOKEN = 'K1YpHcYW2Y2KV9ddChcg3n7z6m2qBPHm';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -38,7 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         const formData = new FormData();
         formData.append('file', fs.createReadStream(zipPath));
-        formData.append('token', GOFILE_TOKEN); // optional if you're using a guest account
+        formData.append('token', GOFILE_TOKEN); 
 
         const response = await axios.post(GOFILE_API, formData, {
           headers: formData.getHeaders()
@@ -70,13 +69,13 @@ export function activate(context: vscode.ExtensionContext) {
 
       if (input) {
         vscode.window.showInformationMessage(`Received link: ${input}`);
-        // Download & unzip logic goes here
+        
       }
     })
   );
 }
 
-// CodeShareViewProvider remains unchanged (UI)
+
 class CodeShareViewProvider implements vscode.WebviewViewProvider {
   constructor(private readonly _extensionUri: vscode.Uri) {}
 
