@@ -4,15 +4,17 @@ import * as path from 'path';
 import * as os from 'os';
 import AdmZip from 'adm-zip';
 import axios from 'axios';
+import FormData from 'form-data';
+
+const GOFILE_API = 'https://upload.gofile.io/uploadFile';
+// 🔐 Optional: add your GoFile token (or prompt for it securely)
+const GOFILE_TOKEN = 'K1YpHcYW2Y2KV9ddChcg3n7z6m2qBPHm';
 
 export function activate(context: vscode.ExtensionContext) {
   const provider = new CodeShareViewProvider(context.extensionUri);
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      'codeShareView',
-      provider
-    )
+    vscode.window.registerWebviewViewProvider('codeShareView', provider)
   );
 
   context.subscriptions.push(
@@ -25,36 +27,36 @@ export function activate(context: vscode.ExtensionContext) {
 
       const folderPath = workspaceFolders[0].uri.fsPath;
 
-      const token = await vscode.window.showInputBox({
-        prompt: 'Enter your GitHub personal access token (gist scope)',
-        ignoreFocusOut: true,
-        password: true
-      });
-
-      if (!token) {
-        vscode.window.showWarningMessage('GitHub token is required.');
-        return;
-      }
-
       try {
         vscode.window.showInformationMessage('Zipping project...');
-        const zipPath = path.join(os.tmpdir(), 'code-share-upload.zip');
+        const zipPath = path.join(os.tmpdir(), `project-${Date.now()}.zip`);
         const zip = new AdmZip();
         zip.addLocalFolder(folderPath);
         zip.writeZip(zipPath);
 
-        vscode.window.showInformationMessage('Uploading to GitHub Gist...');
+        vscode.window.showInformationMessage('Uploading to GoFile.io...');
 
-        const gistUrl = await uploadZipAsGist(zipPath, token);
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(zipPath));
+        formData.append('token', GOFILE_TOKEN); // optional if you're using a guest account
 
-        if (gistUrl) {
-          await vscode.env.clipboard.writeText(gistUrl);
-          vscode.window.showInformationMessage('Link copied to clipboard: ' + gistUrl);
-        } else {
-          vscode.window.showErrorMessage('Failed to upload to Gist.');
+        const response = await axios.post(GOFILE_API, formData, {
+          headers: formData.getHeaders()
+        });
+
+        const downloadPage = response.data?.data?.downloadPage;
+
+        if (!downloadPage) {
+          vscode.window.showErrorMessage('Upload failed: No link returned.');
+          return;
         }
+
+        await vscode.env.clipboard.writeText(downloadPage);
+        vscode.window.showInformationMessage('Link copied to clipboard: ' + downloadPage);
+        console.log('GoFile download page:', downloadPage);
+
       } catch (err: any) {
-        vscode.window.showErrorMessage('Failed to send code: ' + err.message);
+        vscode.window.showErrorMessage('Upload failed: ' + err.message);
         console.error(err);
       }
     })
@@ -63,41 +65,18 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('codeShare.receiveCode', async () => {
       const input = await vscode.window.showInputBox({
-        prompt: 'Enter the Gist link'
+        prompt: 'Paste the GoFile.io link'
       });
 
       if (input) {
         vscode.window.showInformationMessage(`Received link: ${input}`);
-        // Implementation for receiving code goes here
+        // Download & unzip logic goes here
       }
     })
   );
 }
 
-async function uploadZipAsGist(zipPath: string, token: string): Promise<string | null> {
-  const fileBuffer = fs.readFileSync(zipPath);
-  const contentBase64 = fileBuffer.toString('base64');
-
-  const body = {
-    description: "CodeSplash shared project",
-    public: false,
-    files: {
-      "project.zip.base64": {
-        content: contentBase64
-      }
-    }
-  };
-
-  const res = await axios.post('https://api.github.com/gists', body, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github+json'
-    }
-  });
-
-  return res.data?.html_url || null;
-}
-
+// CodeShareViewProvider remains unchanged (UI)
 class CodeShareViewProvider implements vscode.WebviewViewProvider {
   constructor(private readonly _extensionUri: vscode.Uri) {}
 
@@ -131,7 +110,6 @@ class CodeShareViewProvider implements vscode.WebviewViewProvider {
             font-family: sans-serif;
             padding: 10px;
           }
-
           button {
             background-color: rgb(127, 137, 145);
             color: white;
@@ -143,11 +121,9 @@ class CodeShareViewProvider implements vscode.WebviewViewProvider {
             width: 100%;
             font-size: 11.5px;
           }
-
           button:hover {
             background-color: #005a9e;
           }
-
           .description {
             margin-bottom: 10px;
           }
@@ -157,7 +133,6 @@ class CodeShareViewProvider implements vscode.WebviewViewProvider {
         <div class="description">Splash your code to others to set up the environment automatically.</div>
         <button onclick="sendCommand('send')">Send Code</button>
         <button onclick="sendCommand('receive')">Receive Code</button>
-
         <script>
           const vscode = acquireVsCodeApi();
           function sendCommand(command) {
