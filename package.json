@@ -65,6 +65,7 @@
   "dependencies": {
     "adm-zip": "^0.5.16",
     "axios": "^1.10.0",
+    "firebase": "^11.9.1",
     "form-data": "^4.0.3"
   }
 }
