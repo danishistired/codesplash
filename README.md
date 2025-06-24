@@ -18,10 +18,6 @@ No Git, no Drive uploads, no setup instructions — just splash the code and go.
 
 -> Coming soon: auto-run entry scripts like npm start or python app.py
 
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
 ## Requirements
 
 This extension requires the following to work properly:
